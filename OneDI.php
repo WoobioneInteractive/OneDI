@@ -14,20 +14,20 @@ class OneDI implements IDependencyContainer
     /**
      * @var IDependencyCollection[]
      */
-    private $collections;
+    private $readOnlyCollections;
 
     /**
      * OneDI constructor.
      * @param $collection
      */
-    public function __construct($collection)
+    public function __construct()
     {
 
     }
 
     public function AddCollection(IDependencyCollection $collection)
     {
-        array_push($this->collections, $collection);
+        array_push($this->readOnlyCollections, $collection);
     }
 
     /**
