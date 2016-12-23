@@ -5,37 +5,60 @@
  */
 class SingletonDependency implements IDependencyDefinition
 {
-    /**
-     * @var mixed
-     */
-    private $instance;
+	/**
+	 * @var string
+	 */
+	private $className;
 
-    /**
-     * SingletonDependency constructor.
-     * @param mixed $instance
-     * @param string $conformsTo interface/class to validate $instance against
-     * @throws InstanceDependencyException
-     */
-    public function __construct($instance, $conformsTo)
-    {
-        if (interface_exists($conformsTo) && !OnePHP::ClassImplements($instance, $conformsTo))
-            throw new InstanceDependencyException("Instance of '" . get_class($instance) . "' does not conform to interface '$conformsTo'");
+	/**
+	 * @var callable
+	 */
+	private $callable;
 
-        if (class_exists($conformsTo) && !is_a($instance, $conformsTo))
-            throw new InstanceDependencyException("Instance of '" . get_class($instance) . "' is not of type '$conformsTo'");
+	/**
+	 * SingletonDependency constructor.
+	 * @param string|callable $resolvableAsInstance
+	 * @param string $conformsTo interface/class to validate $instance against
+	 * @throws SingletonDependencyException
+	 */
+	public function __construct($resolvableAsInstance, $conformsTo)
+	{
+		// Callable constructor was supplied
+		if (is_callable($resolvableAsInstance)) {
+			$this->callable = $resolvableAsInstance;
+		}
 
-        $this->instance = $instance;
-    }
+		// Only class name was supplied
+		else if (is_string($resolvableAsInstance)) {
+			if (!class_exists($resolvableAsInstance))
+				throw new SingletonDependencyException("No such class '$resolvableAsInstance'");
 
-    /**
-     * Get constructed instance of defined dependency
-     * @param IDependencyContainer $container
-     * @return mixed
-     */
-    public function GetInstance(IDependencyContainer $container)
-    {
-        return $this->instance;
-    }
+			if (interface_exists($conformsTo) && !OnePHP::ClassImplements($resolvableAsInstance, $conformsTo))
+				throw new SingletonDependencyException("Class '$resolvableAsInstance' does not implement interface '$conformsTo'");
+
+			if (class_exists($conformsTo) && $resolvableAsInstance != $conformsTo)
+				throw new SingletonDependencyException("Impossible to cast class '$resolvableAsInstance' to '$conformsTo'");
+
+			$this->className = $resolvableAsInstance;
+		}
+
+		else {
+			throw new SingletonDependencyException("Could not build dependency - '$resolvableAsInstance' can not be resolved");
+		}
+	}
+
+	/**
+	 * Get constructed instance of defined dependency
+	 * @param IDependencyContainer $container
+	 * @return object
+	 */
+	public function GetInstance(IDependencyContainer $container)
+	{
+		if ($this->callable)
+			return $container->Call($this->callable);
+
+		return $container->Autowire($this->className);
+	}
 
     /**
      * See if instance should be stored as a shared instance

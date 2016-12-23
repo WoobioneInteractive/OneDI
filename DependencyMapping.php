@@ -14,26 +14,40 @@ class DependencyMapping
      */
     private $type;
 
+	/**
+	 * @var mixed
+	 */
+	private $instanceReference;
+
+	/**
+	 * @var string
+	 */
+	private $conformsTo;
+
     /**
      * DependencyMapping constructor.
      * @param array $fromArray Array to parse mapping from
+	 * @param string $conformsTo interface/class to validate $instance against
      * @throws DependencyMappingException
      */
-    public function __construct(Array $fromArray)
+    public function __construct(Array $fromArray, $conformsTo)
     {
         if (!array_key_exists(self::InstanceReference, $fromArray))
             throw new DependencyMappingException("Invalid dependency mapping found - no InstanceReference specified");
 
-        $instanceReference = $fromArray[self::InstanceReference];
+		$this->conformsTo = $conformsTo;
+        $this->instanceReference = $fromArray[self::InstanceReference];
 
-        // No type was specified - tr
+        // Figure out type
         if (!array_key_exists(self::Type, $fromArray)) {
-            if (is_string($instanceReference) || is_callable($instanceReference))
+            if (is_string($this->instanceReference) || is_callable($this->instanceReference))
                 $this->type = self::Type_Transient;
 
-            if (is_object($instanceReference))
+            if (is_object($this->instanceReference))
                 $this->type = self::Type_Instance;
-        }
+        } else {
+			$this->type = $fromArray[self::Type];
+		}
     }
 
     /**
@@ -43,12 +57,12 @@ class DependencyMapping
     {
         switch ($this->type) {
             case self::Type_Singleton:
-                return new SingletonDependency();
+                return new SingletonDependency($this->instanceReference);
             case self::Type_Instance:
-                return new InstanceDependency();
+                return new InstanceDependency($this->instanceReference);
 
             default:
-                return new TransientDependency();
+                return new TransientDependency($this->instanceReference);
         }
     }
 }
